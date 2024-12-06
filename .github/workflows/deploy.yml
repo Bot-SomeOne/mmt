@@ -21,15 +21,15 @@ jobs:
     - name: Deploy to gh-pages
       run: |
         # Ensure the gh-pages branch exists
-        git checkout --orphan gh-pages
+        git checkout gh-pages || git checkout --orphan gh-pages
+
+        # Clean the branch but preserve .git folder
+        ls -A | xargs rm -rf || true
         
-        # Remove old files except the static files directory (e.g., 'static' or 'dist')
-        git rm -rf . --ignore-unmatch || true
-        
-        # Copy static files (adjust if your files are in a specific folder)
-        cp -r ./ ./ || true  # Assuming your files are already in the root
+        # Copy files from the main branch
+        git checkout main -- .
 
         # Add, commit, and push changes
         git add .
-        git commit -m "Deploy static HTML site"
+        git commit -m "Deploy static HTML site" || echo "No changes to commit"
         git push -f origin gh-pages
