@@ -22,13 +22,14 @@ jobs:
       run: |
         # Ensure the gh-pages branch exists
         git checkout --orphan gh-pages
-        git rm -rf . || true
         
-        # Copy static files to the root
-        cp -r * ../
-        mv ../* ./
+        # Remove old files except the static files directory (e.g., 'static' or 'dist')
+        git rm -rf . --ignore-unmatch || true
         
-        # Commit and push changes
+        # Copy static files (adjust if your files are in a specific folder)
+        cp -r ./ ./ || true  # Assuming your files are already in the root
+
+        # Add, commit, and push changes
         git add .
         git commit -m "Deploy static HTML site"
         git push -f origin gh-pages
