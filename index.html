@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subnet Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            font-size: 16px;
+        }
+        label {
+            font-size: 18px;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Subnet Mask và Dải Địa Chỉ</h1>
+    <label for="ipv4">Nhập Địa Chỉ IPv4 (Ví dụ: 192.168.1.0/24):</label><br>
+    <input type="text" id="ipv4" placeholder="IPv4 Address/Prefix" /><br><br>
+
+    <button onclick="calculateIPv4()">Tính Toán Subnet</button>
+
+    <div id="result"></div>
+
+    <script>
+        function calculateIPv4() {
+            // Lấy giá trị nhập vào
+            const input = document.getElementById("ipv4").value;
+            const regex = /^(\d{1,3}\.){3}\d{1,3}\/(\d{1,2})$/;
+            const resultDiv = document.getElementById("result");
+
+            // Kiểm tra định dạng đầu vào
+            if (!regex.test(input)) {
+                resultDiv.innerHTML = "Vui lòng nhập địa chỉ IPv4 hợp lệ (Ví dụ: 192.168.1.0/24)";
+                return;
+            }
+
+            const [ip, prefix] = input.split('/');
+            const ipParts = ip.split('.').map(Number);
+            const maskLength = Number(prefix);
+
+            // Tính Subnet Mask từ prefix
+            const subnetMask = getSubnetMask(maskLength);
+            const networkAddress = calculateNetworkAddress(ipParts, subnetMask);
+            const broadcastAddress = calculateBroadcastAddress(networkAddress, maskLength);
+            const usableIPs = calculateUsableIPs(maskLength);
+
+            // Hiển thị kết quả
+            resultDiv.innerHTML = `
+                <p>Địa chỉ IPv4: ${ip}</p>
+                <p>Subnet Mask: ${subnetMask}</p>
+                <p>Địa chỉ Mạng: ${networkAddress}</p>
+                <p>Địa chỉ Broadcast: ${broadcastAddress}</p>
+                <p>Dải Địa Chỉ Có Thể Dùng: ${usableIPs}</p>
+            `;
+        }
+
+        function getSubnetMask(maskLength) {
+            const mask = Array(4).fill(0);
+            let bits = maskLength;
+            for (let i = 0; i < 4; i++) {
+                if (bits > 8) {
+                    mask[i] = 255;
+                    bits -= 8;
+                } else {
+                    mask[i] = (256 - Math.pow(2, 8 - bits)) & 255;
+                    break;
+                }
+            }
+            return mask.join('.');
+        }
+
+        function calculateNetworkAddress(ipParts, subnetMask) {
+            const maskParts = subnetMask.split('.').map(Number);
+            const networkParts = ipParts.map((part, index) => part & maskParts[index]);
+            return networkParts.join('.');
+        }
+
+        function calculateBroadcastAddress(networkAddress, maskLength) {
+            const networkParts = networkAddress.split('.').map(Number);
+            const broadcastParts = networkParts.map((part, index) => 
+                index < 3 ? part | (255 - (Math.pow(2, 8 - maskLength % 8) - 1)) : part | 255);
+            return broadcastParts.join('.');
+        }
+
+        function calculateUsableIPs(maskLength) {
+            const totalIPs = Math.pow(2, 32 - maskLength);
+            const usableIPs = totalIPs - 2; // Trừ địa chỉ mạng và broadcast
+            return `${usableIPs} địa chỉ có thể sử dụng`;
+        }
+    </script>
+
+    <h1>Tính toán và phân chia Mạng IPv6</h1>
+    <label for="ipv6">Nhập địa chỉ IPv6 (ví dụ: 2001:db8:85a3::/48):</label><br>
+    <input type="text" id="ipv6" placeholder="Nhập địa chỉ IPv6"><br>
+
+    <label for="subnet">Độ dài prefix (ví dụ: 64):</label><br>
+    <input type="number" id="subnet" placeholder="Nhập độ dài prefix"><br><br>
+
+    <button onclick="calculateIPv6()">Tính toán</button>
+
+    <div class="output" id="output" style="display:none;">
+        <h3>Kết quả tính toán:</h3>
+        <pre id="result"></pre>
+    </div>
+
+    <script>
+        function calculateIPv6() {
+            const ipv6 = document.getElementById("ipv6").value.trim();
+            const subnet = parseInt(document.getElementById("subnet").value.trim());
+            const resultElement = document.getElementById("result");
+            const outputElement = document.getElementById("output");
+
+            // Kiểm tra đầu vào
+            if (!ipv6 || !subnet || subnet < 0 || subnet > 128) {
+                alert("Vui lòng nhập đúng địa chỉ IPv6 và độ dài prefix.");
+                return;
+            }
+
+            // Phân tích địa chỉ IPv6 và prefix
+            const [address, prefix] = ipv6.split("/");
+            const prefixLength = prefix ? parseInt(prefix) : 128;
+
+            // Xử lý tính toán mạng con
+            const prefixPart = address.split(":").map(group => group.padStart(4, "0")).join(":");
+
+            // Tính toán các subnet con
+            let networkAddress = prefixPart;
+            let remainingBits = 128 - prefixLength;
+
+            // Tính toán số lượng subnet con và địa chỉ
+            const numSubnets = Math.pow(2, remainingBits);
+
+            // Kết quả hiển thị
+            resultElement.textContent = `
+Địa chỉ IPv6: ${ipv6}
+Mạng con (/64) đầu tiên: ${address.split(":").slice(0, 4).join(":")}:0000:0000:0000:0000/64
+Số lượng subnet con có thể tạo ra: ${numSubnets}
+
+Với độ dài prefix ${prefixLength}, bạn có thể chia subnet con trong dải từ ${networkAddress} đến ${networkAddress.replace(/0000$/, "ffff")}.
+            `;
+            outputElement.style.display = "block";
+        }
+    </script>
+</body>
+</html>
