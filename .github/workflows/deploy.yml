@@ -8,12 +8,27 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-22.04
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Deploy with Git
+    - name: Setup Git
       run: |
         git config user.name "github-actions"
         git config user.email "actions@github.com"
-        git push origin gh-pages
+
+    - name: Deploy to gh-pages
+      run: |
+        # Ensure the gh-pages branch exists
+        git checkout --orphan gh-pages
+        git rm -rf . || true
+        
+        # Copy static files to the root
+        cp -r * ../
+        mv ../* ./
+        
+        # Commit and push changes
+        git add .
+        git commit -m "Deploy static HTML site"
+        git push -f origin gh-pages
