@@ -3,18 +3,17 @@ name: Deploy Static HTML
 on:
   push:
     branches:
-      - main  # Deploy only when pushing to the main branch
+      - main
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu-22.04
     steps:
-    - name: Checkout code
+    - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./  # The directory containing your static HTML files
+    - name: Deploy with Git
+      run: |
+        git config user.name "github-actions"
+        git config user.email "actions@github.com"
+        git push origin gh-pages
