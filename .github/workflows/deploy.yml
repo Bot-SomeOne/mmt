@@ -1,31 +1,20 @@
-name: Deploy HTML to GitHub Pages
+name: Deploy Static HTML
 
 on:
   push:
     branches:
-      - main  # Trigger deployment on pushes to the 'main' branch
+      - main  # Deploy only when pushing to the main branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}  # Use the default GitHub token
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      # Step 2: Configure Git (fixes any cached credential issues)
-      - name: Configure Git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-      # Step 3: Deploy to GitHub Pages
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages      # Target branch for GitHub Pages
-          publish_dir: ./               # Path to the directory with your HTML files
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./  # The directory containing your static HTML files
