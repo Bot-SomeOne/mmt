@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP Subnet Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        input, button {
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 16px;
+        }
+        label {
+            font-size: 16px;
+        }
+        pre {
+            white-space: pre-wrap; 
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <h1>IP Subnet Mask Calculator</h1>
+
+    <label for="cidr">Enter CIDR (IPv4 , e.g., 154.116.208.0/23):</label>
+    <input type="text" id="cidr" placeholder="154.116.208.0/23">
+
+    <button onclick="calculateSubnets()">Calculate Subnets</button>
+
+    <h3>Results:</h3>
+    <pre id="result"></pre>
+
+    <script>
+        // Convert IPv4 to binary
+        function ipToBinary(ip) {
+            return ip.split('.').map(octet => {
+                let binary = parseInt(octet).toString(2);
+                return binary.padStart(8, '0');
+            }).join('');
+        }
+
+        // Convert binary to IPv4 address
+        function binaryToIp(binary) {
+            return binary.match(/.{8}/g).map(bin => parseInt(bin, 2)).join('.');
+        }
+
+        // Convert IPv6 to binary
+        function ipv6ToBinary(ipv6) {
+            let hexParts = ipv6.split(':').map(part => parseInt(part, 16).toString(2).padStart(16, '0'));
+            return hexParts.join('');
+        }
+
+        // Convert binary to IPv6 address
+        function binaryToIpv6(binary) {
+            let hexParts = [];
+            for (let i = 0; i < 8; i++) {
+                hexParts.push(parseInt(binary.slice(i * 16, (i + 1) * 16), 2).toString(16).toUpperCase());
+            }
+            return hexParts.join(':');
+        }
+
+        function changeIpAddress(ipWithMask, increment) {
+        // Tách địa chỉ IP và subnet mask từ chuỗi
+        let [ip, mask] = ipWithMask.split('/');
+
+        // Kiểm tra nếu không có subnet mask hoặc là giá trị không hợp lệ
+        if (!mask) {
+            throw new Error("Subnet mask is missing.");
+        }
+
+        // Tách địa chỉ IP thành các phần (octets)
+        let ipParts = ip.split('.');
+
+        // Đảm bảo rằng có đủ 4 phần (octet) trong địa chỉ IP
+        if (ipParts.length !== 4) {
+            throw new Error("Invalid IP address format.");
+        }
+
+        // Cộng giá trị increment vào octet cuối cùng của địa chỉ IP
+        ipParts[3] = parseInt(ipParts[3]) + increment;
+
+        // Ghép lại địa chỉ IP đã thay đổi và subnet mask
+        let newIp = ipParts.join('.');
+        return newIp + '/' + mask;
+        }
+
+
+        // Calculate the subnets for IPv4 and IPv6
+        function calculateSubnets() {
+            let cidr = document.getElementById("cidr").value.trim();
+            let result = `CIDR Input: ${cidr}\n`;
+
+            if (cidr.includes(":")) {
+                // IPv6 case (no subnet mask calculation)
+                let [ip, cidrBits] = cidr.split('/');
+                result += `Original IPv6 Address: ${ip}\n`;
+
+                let cidrNum = parseInt(cidrBits);
+                result += `Subnetting IPv6 (/48 -> /64) to display example subnets:\n`;
+
+                // Start from /48 and generate subnets for /49, /50, ..., /64
+                let ipv6Binary = ipv6ToBinary(ip);
+
+                for (let i = cidrNum; i <= 64; i++) {
+                    let subnetBinary = ipv6Binary.slice(0, i) + '0'.repeat(128 - i);
+                    let subnet = binaryToIpv6(subnetBinary);
+                    result += `Subnet /${i}: ${subnet}::/${i}\n`;
+                }
+
+                result += `\nExample Subnet for /48: \n21C4:DE80::2`;
+
+            } else {
+                // IPv4 case
+                let [ip, cidrBits] = cidr.split('/');
+                let subnetMaskBits = parseInt(cidrBits);
+
+                // Convert IPv4 address to binary
+                let ipBinary = ipToBinary(ip);
+                result += `Original IPv4 Address: ${ip}\n`;
+
+                // Calculate subnet mask
+                let subnetMaskBinary = '1'.repeat(subnetMaskBits) + '0'.repeat(32 - subnetMaskBits);
+                let subnetMask = binaryToIp(subnetMaskBinary);
+                result += `Subnet Mask: ${subnetMask}\n`;
+
+                // Calculate network address for IPv4
+                let networkBinary = ipBinary.slice(0, subnetMaskBits) + '0'.repeat(32 - subnetMaskBits);
+                let networkAddress = binaryToIp(networkBinary);
+                result += `Network Address: ${networkAddress}\n\n`;
+
+                // Subnets for IPv4 (/24 to /30)
+                let subnetBits = [24, 25, 26, 27, 28, 29, 30];
+                result += `Subnets for IPv4 (/24 to /30):\n`;
+
+                let currentNetworkBinary = ipBinary;
+                let subnetNetworkCal = [];
+                subnetBits.forEach(bits => {
+                    let subnetMaskBinary = '1'.repeat(bits) + '0'.repeat(32 - bits);
+                    let newSubnetMask = binaryToIp(subnetMaskBinary);
+
+                    // Calculate the network address of each subnet
+                    let subnetNetworkBinary = currentNetworkBinary.slice(0, bits) + '0'.repeat(32 - bits);
+                    let subnetNetworkAddress = binaryToIp(subnetNetworkBinary);
+                    subnetNetworkCal.push(subnetNetworkAddress + "/" + bits);
+
+                    // Store the subnet information
+                    result += `Subnet Mask: ${newSubnetMask} | Network: ${subnetNetworkAddress} /${bits}\n`;
+
+                    // Update the current network for the next subnet
+                    currentNetworkBinary = incrementNetwork(currentNetworkBinary, bits);
+                });
+                result += "VL10-SV1: " + changeIpAddress(subnetNetworkCal[2],3) +"\n";
+                result += "VL10-SV2: " + changeIpAddress(subnetNetworkCal[2],5) +"\n";
+                result += "VL11-LT1: " + changeIpAddress(subnetNetworkCal[4],3) +"\n";
+                result += "VL11-LT2: " + changeIpAddress(subnetNetworkCal[4],5) +"\n";
+                result += "VL12-PC1: " + changeIpAddress(subnetNetworkCal[0],2) +"\n";
+                result += "VL12-PC2: " + changeIpAddress(subnetNetworkCal[0],4) +"\n";
+                result += "VL20-SV1: " + changeIpAddress(subnetNetworkCal[3],3) +"\n";
+                result += "VL20-SV2: " + changeIpAddress(subnetNetworkCal[3],5) +"\n";
+                result += "VL21-LT1: " + changeIpAddress(subnetNetworkCal[5],7) +"\n";
+                result += "VL21-LT2: " + changeIpAddress(subnetNetworkCal[5],9) +"\n";
+                result += "VL22-PC1: " + changeIpAddress(subnetNetworkCal[1],6) +"\n";
+                result += "VL22-PC2: " + changeIpAddress(subnetNetworkCal[1],8) +"\n";
+            }
+
+
+
+
+            // Show the result
+            document.getElementById("result").textContent = result;
+        }
+
+        // Increment the network address (used for IPv4 subnets)
+        function incrementNetwork(networkBinary, bits) {
+            let subnetSize = Math.pow(2, (32 - bits)); // Size of the subnet for IPv4
+            let networkNumber = parseInt(networkBinary, 2);
+            networkNumber += subnetSize;
+            return networkNumber.toString(2).padStart(32, '0');
+        }
+    </script>
+</body>
+</html>
